@@ -13,9 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from __future__ import unicode_literals, absolute_import, print_function
-
-
 import abc
 import collections
 import functools

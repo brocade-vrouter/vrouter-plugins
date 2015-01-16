@@ -20,8 +20,8 @@ import urllib
 import netaddr
 from neutron.i18n import _LI, _LE
 from novaclient import exceptions as nova_exc
-from oslo.utils import excutils
 from oslo.serialization import jsonutils
+from oslo.utils import excutils
 import requests
 
 from vyatta.common import config
@@ -106,7 +106,7 @@ class VRouterRestAPIClient(object):
 
     def update_router(self, router_name=None,
                       admin_state_up=None, external_gateway_info=None):
-        """ Updates Router name, Admin state, External gateway.
+        """Updates Router name, Admin state, External gateway.
 
         All the parameters are optional.
         """
