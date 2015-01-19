@@ -1,4 +1,6 @@
 *.pyc
 *.DS_Store
-*.egg-info/
+brocade_plugins.egg-info/
+pbr*.egg
 .tox/
+.testrepository/
