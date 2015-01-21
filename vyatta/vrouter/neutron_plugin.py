@@ -29,6 +29,7 @@ from neutron.db import l3_dvr_db
 from neutron.db import l3_gwmode_db
 from neutron.db import models_v2
 from neutron.extensions import l3
+from neutron.i18n import _LE
 from neutron.openstack.common import log as logging
 
 from vyatta.common import config
@@ -228,8 +229,9 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
                         self._core_plugin.delete_port(context.elevated(),
                                                       port['id'])
                     except Exception:
-                        LOG.exception(_('Failed to delete previously created '
-                                        'port for Vyatta vRouter.'))
+                        LOG.exception(_LE(
+                            'Failed to delete previously created '
+                            'port for Vyatta vRouter.'))
 
         port = self._core_plugin.update_port(
             context.elevated(), port['id'], {'port': {
@@ -416,7 +418,6 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
             raise l3.RouterExternalGatewayInUseByFloatingIp(
                 router_id=router_id, net_id=router.gw_port['network_id'])
 
-        # TODO: Check if port in use by VPN
         gw_port = router.gw_port
         self.driver.clear_gateway(
             context, router_id,
@@ -469,7 +470,7 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
                 self._attach_port(context, router['id'], gw_port,
                                   external_gw=True)
             except Exception as ex:
-                LOG.exception(_("Exception while attaching port : %s"), ex)
+                LOG.exception(_LE("Exception while attaching port : %s"), ex)
                 with excutils.save_and_reraise_exception():
                     try:
                         with context.session.begin(subtransactions=True):
@@ -478,7 +479,7 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
                             self._core_plugin.delete_port(context.elevated(),
                                                           gw_port['id'])
                     except Exception:
-                        LOG.exception(_('Failed to roll back changes to '
+                        LOG.exception(_LE('Failed to roll back changes to '
                                         'Vyatta vRouter after external '
                                         'gateway assignment.'))
 
