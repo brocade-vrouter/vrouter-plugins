@@ -1,7 +1,5 @@
 include README.rst
 include LICENSE
-recursive-include vyatta
+recursive-include vyatta *.py
 
-exclude AUTHORS
-exclude ChangeLog
 global-exclude *.pyc
