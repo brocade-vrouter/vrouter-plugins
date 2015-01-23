@@ -600,9 +600,9 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
             context, port_id, do_notify)
 
 
-class _VyattaL3RCPEndpoint(l3_rpc.L3RpcCallback):
+class _VyattaL3RPCEndpoint(l3_rpc.L3RpcCallback):
     def sync_routers(self, context, **kwargs):
-        routers_list = super(_VyattaL3RCPEndpoint, self).sync_routers(
+        routers_list = super(_VyattaL3RPCEndpoint, self).sync_routers(
             context, **kwargs)
 
         if not routers_list:
