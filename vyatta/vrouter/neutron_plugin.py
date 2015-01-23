@@ -15,12 +15,16 @@
 
 import netaddr
 from oslo.utils import excutils
+from oslo.utils import importutils
 from sqlalchemy.orm import exc
 
+from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.api.rpc.handlers import l3_rpc
 from neutron.api.v2 import attributes
 from neutron.common import constants as l3_constants
 from neutron.common import exceptions as q_exc
+from neutron.common import rpc as n_rpc
+from neutron.common import topics
 from neutron.db import common_db_mixin
 from neutron.db import extraroute_db
 from neutron.db import l3_agentschedulers_db
@@ -31,10 +35,12 @@ from neutron.db import models_v2
 from neutron.extensions import l3
 from neutron.i18n import _LE
 from neutron.openstack.common import log as logging
+from neutron.plugins.common import constants
 
 from vyatta.common import config
 from vyatta.common import exceptions as v_exc
 from vyatta.common import utils as vyatta_utils
+from vyatta.vrouter import driver as vrouter_driver
 
 
 LOG = logging.getLogger(__name__)
@@ -59,6 +65,37 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
 
     ATTACH_PORT_RETRY_LIMIT = 5
     ATTACH_PORT_RETRY_DELAY = 5
+
+    supported_extension_aliases = [
+        "router", "ext-gw-mode", "extraroute",
+        l3_constants.L3_AGENT_SCHEDULER_EXT_ALIAS]
+
+    def __init__(self):
+        self.setup_rpc()
+        self.driver = vrouter_driver.VyattaVRouterDriver()
+        self.router_scheduler = importutils.import_object(
+            config.CONF.router_scheduler_driver)
+        self.start_periodic_agent_status_check()
+
+    def setup_rpc(self):
+        # RPC support
+        self.topic = topics.L3PLUGIN
+        self.conn = n_rpc.create_connection(new=True)
+        self.agent_notifiers.update(
+            {l3_constants.AGENT_TYPE_L3: l3_rpc_agent_api.L3AgentNotifyAPI()})
+        self.endpoints = [_VyattaL3RPCEndpoint()]
+        self.conn.create_consumer(self.topic, self.endpoints,
+                                  fanout=False)
+        self.conn.consume_in_threads()
+
+    def get_plugin_type(self):
+        return constants.L3_ROUTER_NAT
+
+    def get_plugin_description(self):
+        """Returns string description of the plugin."""
+        return ("Brocade Vyatta Router Service Plugin for basic L3 forwarding "
+                "between (L2) Neutron networks and access to external "
+                "networks via a NAT gateway.")
 
     def create_router(self, context, router):
         """Creates the vRouter VM using vrouter_driver.
