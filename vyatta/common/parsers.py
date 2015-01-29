@@ -17,8 +17,47 @@ import abc
 import collections
 import functools
 import itertools
+import re
 
 from vyatta.common import exceptions as v_exc
+
+HWADDR = r'(?:[a-zA-Z0-9]{2}:){5}[a-zA-Z0-9]{2}'
+IPv4_ADDR = r'(?:\d+\.){3}\d+'
+
+
+EMPTY_LINE = re.compile(r'^\s+$')
+IFACE = re.compile(r'^(\w+):')
+LINK_ETHER = re.compile(r'\s+link/ether\s+({0})'.format(HWADDR))
+IP_ADDR = re.compile(r'\s+inet\s+({0})'.format(IPv4_ADDR))
+
+
+def parse_interfaces(output):
+    ifaces = []
+    info = {}
+    for line in output.splitlines():
+        if not line or re.match(EMPTY_LINE, line):
+            continue
+
+        m = re.match(IFACE, line)
+        if m:
+            if info:
+                ifaces.append(info)
+            name = m.group(1)
+            info = dict(name=name, ip_addrs=[], mac_address=None)
+            continue
+
+        m = re.match(LINK_ETHER, line)
+        if m:
+            info['mac_address'] = m.group(1).lower()
+
+        m = re.match(IP_ADDR, line)
+        if m:
+            info['ip_addrs'].append(m.group(1))
+
+    if info:
+        ifaces.append(info)
+
+    return ifaces
 
 
 class TableParser(collections.Iterable, collections.Sized):

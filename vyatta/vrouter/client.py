@@ -27,6 +27,7 @@ import requests
 from vyatta.common import config
 from vyatta.common import exceptions as v_exc
 from vyatta.common import globals as vyatta_globals
+from vyatta.common import parsers
 from vyatta.common import utils as vyatta_utils
 
 
@@ -482,7 +483,7 @@ class VRouterRestAPIClient(object):
         """Retrieves Admin State."""
         output = self._show_cmd("ip/forwarding")
         LOG.info(_LI('Vyatta vRouter status : %s'), output)
-        return output == "IP forwarding is on"
+        return "IP forwarding is on" in output
 
     def _get_nat_cmd(self):
 
@@ -580,34 +581,16 @@ class VRouterRestAPIClient(object):
 
         LOG.debug('Vyatta vRouter:get_ethernet_if_id. Given MAC {0}'
                   .format(repr(mac_address)))
+        mac_address = mac_address.strip().lower()
+        ifaces = self._get_interfaces()
+        for iface in ifaces:
+            if iface['mac_address'] == mac_address:
+                return iface['name']
 
-        cli_output = '\n\n' + self._execute_cli_cmd('sudo ifconfig -a')
-        LOG.debug('Vyatta vRouter:CLI output{0}'.format(cli_output))
-
-        eth_interfaces = {}
-        given_mac_address = mac_address.lower()
-
-        for paragraph in cli_output.split('\n\n'):
-            # Regular expression match
-            if self._vrouter_model == self._VROUTER_VR_MODEL:
-                match_line = re.compile(r"(dp\w+).*HWaddr ([^ ]+)")
-            else:
-                match_line = re.compile(r"(eth\d+).*HWaddr ([^ ]+)")
-            result = match_line.match(paragraph)
-            if result is not None:
-                eth_if_id = result.group(1)
-                cli_mac_addr = result.group(2).lower()
-                eth_interfaces[cli_mac_addr] = eth_if_id
-                LOG.debug('Vyatta vRouter:get_ethernet_if_id.Device MAC {0}'
-                          .format(repr(cli_mac_addr)))
-
-        if given_mac_address not in eth_interfaces:
-            raise v_exc.VRouterOperationError(
-                ip_address=self.address,
-                reason='Ethernet interface with Mac-address {0} does not exist'
-                .format(given_mac_address))
-
-        return eth_interfaces[given_mac_address]
+        raise v_exc.VRouterOperationError(
+            ip_address=self.address,
+            reason='Ethernet interface with Mac-address {0} does not exist'
+            .format(mac_address))
 
     def _get_interface_cmd(self):
         if self._vrouter_model == self._VROUTER_VR_MODEL:
@@ -926,6 +909,10 @@ class VRouterRestAPIClient(object):
                 return ''.join(block_str)
 
         return None
+
+    def _get_interfaces(self):
+        output = self._show_cmd('interfaces/detail')
+        return parsers.parse_interfaces(output)
 
 
 class ClientsPool(object):
