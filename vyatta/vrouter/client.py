@@ -155,9 +155,6 @@ class VRouterRestAPIClient(object):
 
         self.exec_cmd_batch(cmd_list)
 
-        # Execute ifconfig ethX up just to be sure
-        self._execute_cli_cmd('sudo ip link set dev {0} up'.format(eth_if_id))
-
         # Cache the router interface info using subnet
         if router_if_subnet not in self._router_if_subnet_dict:
             self._router_if_subnet_dict[router_if_subnet] = None
@@ -346,10 +343,6 @@ class VRouterRestAPIClient(object):
 
         # Execute the configuration commands
         self.exec_cmd_batch(cmd_list)
-
-        # Execute ifconfig ethX up just to be sure
-        self._execute_cli_cmd('sudo ifconfig -a {0} up'
-                              .format(given_gw_info.get_ethernet_if_id()))
 
         return nat_rules
 
@@ -706,14 +699,6 @@ class VRouterRestAPIClient(object):
 
             response = self._rest_call("DELETE", config_url, session=session)
             self._check_response(response, session=session)
-
-    def _execute_cli_cmd(self, cli_cmd):
-        """Executes any given CLI command using REST API."""
-
-        custom_headers = {'shell-command': cli_cmd}
-        response = self._rest_call("GET", "/rest/app/command", custom_headers)
-        self._check_response(response)
-        return response.text
 
     def _check_response(self, response, config_url=None, session=None):
 
