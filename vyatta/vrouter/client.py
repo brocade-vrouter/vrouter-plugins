@@ -665,6 +665,9 @@ class VRouterRestAPIClient(object):
 
     def _set_router_name_cmd(self, cmd_list, router_name):
         """Configures router name using command."""
+	
+	if '_' in router_name:
+            router_name = router_name.replace('_', '-')	
 
         cmd_list.append(SetCmd("system/host-name/{0}".
                                format(urllib.quote_plus(router_name))))
