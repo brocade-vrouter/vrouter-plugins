@@ -75,7 +75,7 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
         self.driver = vrouter_driver.VyattaVRouterDriver()
         self.router_scheduler = importutils.import_object(
             config.CONF.router_scheduler_driver)
-        self.start_periodic_agent_status_check()
+        self.start_periodic_l3_agent_status_check()
 
     def setup_rpc(self):
         # RPC support
