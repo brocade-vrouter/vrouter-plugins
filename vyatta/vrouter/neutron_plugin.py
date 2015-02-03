@@ -503,22 +503,22 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
             context.session.add(router)
             context.session.add(router_port)
 
-            try:
-                self._attach_port(context, router['id'], gw_port,
-                                  external_gw=True)
-            except Exception as ex:
-                LOG.exception(_LE("Exception while attaching port : %s"), ex)
-                with excutils.save_and_reraise_exception():
-                    try:
-                        with context.session.begin(subtransactions=True):
-                            router.gw_port = None
-                            context.session.add(router)
-                            self._core_plugin.delete_port(context.elevated(),
-                                                          gw_port['id'])
-                    except Exception:
-                        LOG.exception(_LE('Failed to roll back changes to '
-                                        'Vyatta vRouter after external '
-                                        'gateway assignment.'))
+        try:
+            self._attach_port(context, router['id'], gw_port,
+                              external_gw=True)
+        except Exception as ex:
+            LOG.exception(_LE("Exception while attaching port : %s"), ex)
+            with excutils.save_and_reraise_exception():
+                try:
+                    with context.session.begin(subtransactions=True):
+                        router.gw_port = None
+                        context.session.add(router)
+                        self._core_plugin.delete_port(context.elevated(),
+                                                      gw_port['id'])
+                except Exception:
+                    LOG.exception(_LE('Failed to roll back changes to '
+                                    'Vyatta vRouter after external '
+                                    'gateway assignment.'))
 
     def _update_extra_routes(self, context, router, routes):
         LOG.debug(
