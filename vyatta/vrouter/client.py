@@ -484,15 +484,18 @@ class VRouterRestAPIClient(object):
         and remove the rule number from the local 'nat-exclude' dict"""
 
         cache_entry = self._get_snat_exclude_cache_entry(src_addr, dest_addr)
-        nat_rule = self._router_subnet_nat_exclude_dict[cache_entry]
-        if nat_rule is not None:
-            LOG.info(_LI('Vyatta vRouter: Delete Cache EXCLUDE rule_num : %d at %s'),
-                     nat_rule, cache_entry)
-            self._delete_snat_rule_cmd(cmd_list, nat_rule)
-        else:
-            LOG.info(_LI('Vyatta vRouter: Delete Cache EXCLUDE entry at %s doesnt exist'),
-                     nat_rule, cache_entry)
-
+        try:
+            nat_rule = self._router_subnet_nat_exclude_dict[cache_entry]
+            if nat_rule is not None:
+                LOG.info(_LI('Vyatta vRouter: Delete Cache EXCLUDE rule_num : %d at %s'),
+                         nat_rule, cache_entry)
+                self._delete_snat_rule_cmd(cmd_list, nat_rule)
+            else:
+                LOG.info(_LI('Vyatta vRouter: Delete Cache EXCLUDE entry at %s doesnt exist'),
+                         nat_rule, cache_entry)
+        except KeyError:
+                LOG.info(_LI('Vyatta vRouter: Delete Cache EXCLUDE: COULD NOT find rule_num at cache entry at %s'), cache_entry)
+            
     def _get_subnet_from_ip_address(self, ip_address):
 
         ip_network = netaddr.IPNetwork(ip_address)
@@ -913,10 +916,14 @@ class VRouterRestAPIClient(object):
                  self._router_if_subnet_dict)
         LOG.info(_LI("Vyatta vRouter cache floating ip dict %s"),
                  self._floating_ip_dict)
+        LOG.info(_LI("Vyatta vRouter cache router nat-exclude dict %s"),
+                 self._router_subnet_nat_exclude_dict)
         LOG.info(_LI("Vyatta vRouter cache NAT floating ip %s"),
                  self._nat_floating_ip_rule_num)
         LOG.info(_LI("Vyatta vRouter cache NAT subnet ip %s"),
                  self._nat_subnet_ip_rule_num)
+        LOG.info(_LI("Vyatta vRouter cache NAT exclude rule num %s"),
+                 self._nat_exclude_rule_num)
 
     def _parse_system_gateway(self, search_str):
 
@@ -965,7 +972,11 @@ class VRouterRestAPIClient(object):
                     # Cache the SNAT rule for router interface
                     self._router_if_subnet_dict[src_addr] = rule_num
                     self._nat_subnet_ip_rule_num = rule_num
-
+                elif (self._MAX_NAT_FLOATING_IP_RULE_NUM < rule_num <
+                    self._MAX_NAT_EXCLUDE_RULE_NUM and
+                    src_addr in self._router_if_subnet_dict): 
+                    # TODO(sridhar): Add parsing code for exclude nat rule
+                    pass
                 elif rule_num < self._MAX_NAT_FLOATING_IP_RULE_NUM:
                     self._nat_floating_ip_rule_num = rule_num
                     floating_ip = translation_addr
