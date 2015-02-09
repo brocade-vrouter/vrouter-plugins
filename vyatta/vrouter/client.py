@@ -459,22 +459,23 @@ class VRouterRestAPIClient(object):
         try:
             # if an entry already exist, the nat exclude is already in vRouter
             rule_num = self._router_subnet_nat_exclude_dict[cache_entry]
+            LOG.info(_LI('Vyatta vRouter Reuse existing EXCLUDE rule_num : %d'), rule_num)
         except KeyError:
             # Get the next SNAT exclude rule number
             rule_num = self._get_next_nat_exclude_rule_num()
+            LOG.info(_LI('Vyatta vRouter Prepare new EXCLUDE rule_num : %d'), rule_num)
 
-            LOG.info(_LI('Vyatta vRouter Preparing EXCLUDE rule_num : %d'), rule_num)
+        # Create the SNAT rule and store in the cache
+        # TODO(sridhar): Unconditionally add for now due client dict bug
+        self._add_snat_exclude_rule_cmd(cmd_list,
+                                        rule_num,
+                                        ext_if_id,
+                                        src_addr,
+                                        dest_addr)
 
-            # Create the SNAT rule and store in the cache
-            self._add_snat_exclude_rule_cmd(cmd_list,
-                                            rule_num,
-                                            ext_if_id,
-                                            src_addr,
-                                            dest_addr)
-
-            LOG.info(_LI('Vyatta vRouter Add Cache EXCLUDE rule_num : %d at %s'),
-                     rule_num, cache_entry)
-            self._router_subnet_nat_exclude_dict[cache_entry] = rule_num
+        LOG.info(_LI('Vyatta vRouter Add Cache EXCLUDE rule_num : %d at %s'),
+                 rule_num, cache_entry)
+        self._router_subnet_nat_exclude_dict[cache_entry] = rule_num
 
         return rule_num
 
@@ -1150,3 +1151,4 @@ class InterfaceInfo(object):
 
     def __repr(self):
         return self.__str__()
+
