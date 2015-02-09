@@ -671,36 +671,35 @@ class VRouterRestAPIClient(object):
 
         Commits and Saves the configuration changes to the startup config.
         """
-        with requests.Session() as session:
-            response = self._rest_call("POST", "/rest/conf", session=session)
-            self._check_response(response, session=session)
+        response = self._rest_call("POST", "/rest/conf")
+        self._check_response(response)
 
-            config_url = response.headers['Location']
-            if config_url is None:
-                raise v_exc.VRouterOperationError(
-                    ip_address=self.address,
-                    reason='REST API configuration URL is null')
+        config_url = response.headers['Location']
+        if config_url is None:
+            raise v_exc.VRouterOperationError(
+                ip_address=self.address,
+                reason='REST API configuration URL is null')
 
-            config_url = "/" + config_url
-            for user_cmd in user_cmd_list:
-                url = user_cmd.make_url(config_url)
-                LOG.debug(
-                    "Vyatta vRouter REST API: Config command %s", url)
-                response = self._rest_call("PUT", url, session=session)
-                self._check_response(response, config_url, session=session)
+        config_url = "/" + config_url
+        for user_cmd in user_cmd_list:
+            url = user_cmd.make_url(config_url)
+            LOG.debug(
+                "Vyatta vRouter REST API: Config command %s", url)
+            response = self._rest_call("PUT", url)
+            self._check_response(response, config_url)
 
-            response = self._rest_call(
-                "POST", config_url + "/commit", session=session)
-            LOG.debug("Vyatta vRouter REST API: %s/commit", config_url)
-            self._check_response(response, config_url, session=session)
+        response = self._rest_call(
+            "POST", config_url + "/commit")
+        LOG.debug("Vyatta vRouter REST API: %s/commit", config_url)
+        self._check_response(response, config_url)
 
-            response = self._rest_call(
-                "POST", config_url + "/save", session=session)
-            LOG.debug("Vyatta vRouter REST API: %s/save", config_url)
-            self._check_response(response, config_url, session=session)
+        response = self._rest_call(
+            "POST", config_url + "/save")
+        LOG.debug("Vyatta vRouter REST API: %s/save", config_url)
+        self._check_response(response, config_url)
 
-            response = self._rest_call("DELETE", config_url, session=session)
-            self._check_response(response, session=session)
+        response = self._rest_call("DELETE", config_url)
+        self._check_response(response)
 
     def _check_response(self, response, config_url=None, session=None):
 
@@ -740,6 +739,7 @@ class VRouterRestAPIClient(object):
         return data
 
     def _show_cmd(self, user_cmd):
+        # TODO(asaprykin): Need to verify error handling
 
         op_cmd = '/rest/op/show/{0}'.format(user_cmd)
         response = self._rest_call("POST", op_cmd)
@@ -752,19 +752,18 @@ class VRouterRestAPIClient(object):
 
         op_url = "/" + op_url
 
-        def get_response_wrapper():
-            response = self._rest_call("GET", op_url)
-            if not response.text.strip():
-                raise v_exc.VRouterOperationError(
-                    ip_address=self.address, reason='Response is empty')
-            return response
+        output = []
 
-        response = vyatta_utils.retry(
-            get_response_wrapper, exceptions=(v_exc.VRouterOperationError,),
-            limit=self.REST_RETRY_LIMIT, delay=self.REST_RETRY_DELAY)
+        while True:
+            response = self._rest_call('GET', op_url)
+            if response.status_code == requests.codes.GONE:
+                break
+
+            if response.text:
+                output.append(response.text)
 
         self._rest_call("DELETE", op_url)
-        return response.text
+        return ''.join(output)
 
     def _process_model(self):
 
