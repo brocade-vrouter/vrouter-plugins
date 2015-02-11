@@ -20,7 +20,12 @@ from neutron.agent.l3 import router_info
 from neutron.common import constants as l3_constants
 
 from vyatta.common import config as vyatta_config
+from vyatta.common import exceptions as v_exc
 from vyatta.vrouter import client as vyatta_client
+
+
+_KEY_VYATTA_EXTRA_DATA = '_vyatta'
+_KEY_MANAGEMENT_IP_ADDRESS = 'management_ip_address'
 
 
 class L3AgentMiddleware(l3_agent.L3NATAgentWithStateReport):
@@ -34,6 +39,26 @@ class L3AgentMiddleware(l3_agent.L3NATAgentWithStateReport):
             service_type="compute",
             tenant_id=vyatta_config.VROUTER.tenant_id)
         self._vyatta_clients_pool = vyatta_client.ClientsPool(compute_client)
+
+    def get_router(self, router_id):
+        try:
+            router = self.router_info[router_id]
+        except KeyError:
+            raise v_exc.InvalidL3AgentStateError(description=_(
+                'L3 agent have no info about reouter id={0}').format(
+                    router_id))
+        return router.router
+
+    def get_router_client(self, router_id):
+        router = self.get_router(router_id)
+        try:
+            address = router[_KEY_VYATTA_EXTRA_DATA]
+            address = address[_KEY_MANAGEMENT_IP_ADDRESS]
+        except KeyError:
+            raise v_exc.CorruptedSystemError(
+                description=('router {0} does not contain vyatta vrouter '
+                             'management ip address').format(router_id))
+        return self._vyatta_clients_pool.get_by_address(router_id, address)
 
     def _router_added(self, router_id, router):
         ri = router_info.RouterInfo(
