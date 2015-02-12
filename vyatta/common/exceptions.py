@@ -64,6 +64,10 @@ class InvalidL3AgentStateError(exceptions.NeutronException):
     message = _('Invalid L3 agent state: %(description)s')
 
 
+class InvalidVPNServiceError(exceptions.NeutronException):
+    message = _('Invalid or incomplete VPN service data')
+
+
 class VPNResourceMappingNotFound(exceptions.NotFound):
     message = _('There is no VPN resource mapping for %(kind)s key=%(key)s')
 

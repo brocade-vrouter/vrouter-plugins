@@ -20,6 +20,7 @@ import logging
 import urllib
 import uuid
 
+from oslo.utils import excutils
 import six
 
 from neutron.i18n import _LE, _LI
@@ -242,48 +243,54 @@ def parse_vpn_connections(ipsec_sa, resources):
 
 
 def validate_svc_connection(conn):
-    map_encryption = {
-        '3des': '3des',
-        'aes-128': 'aes128',
-        'aes-256': 'aes256'}
-    map_pfs = {
-        'group2': 'dh-group2',
-        'group5': 'dh-group5'}
+    # NOTE(asaprykin): Maybe it's better to move code into
+    # separate function to avoid long try..except blocks
+    try:
+        map_encryption = {
+            '3des': '3des',
+            'aes-128': 'aes128',
+            'aes-256': 'aes256'}
+        map_pfs = {
+            'group2': 'dh-group2',
+            'group5': 'dh-group5'}
 
-    allowed_pfs = map_pfs.values() + ['enable', 'disable']
+        allowed_pfs = map_pfs.values() + ['enable', 'disable']
 
-    if conn['dpd_action'] not in ('hold', 'clear', 'restart'):
-        raise ValueError('invalid dpd_action {0}'.format(
-            conn['dpd_action']))
+        if conn['dpd_action'] not in ('hold', 'clear', 'restart'):
+            raise ValueError('invalid dpd_action {0}'.format(
+                conn['dpd_action']))
 
-    ike_policy = conn[_KEY_IKEPOLICY]
-    ike_policy['encryption_algorithm'] = \
-        map_encryption[ike_policy['encryption_algorithm']]
-    if ike_policy['lifetime_units'] != 'seconds':
-        raise ValueError(
-            'invalid "lifetime_units"=="{}" in ike_policy'.format(
-                ike_policy['lifetime_units']))
+        ike_policy = conn[_KEY_IKEPOLICY]
+        ike_policy['encryption_algorithm'] = \
+            map_encryption[ike_policy['encryption_algorithm']]
+        if ike_policy['lifetime_units'] != 'seconds':
+            raise ValueError(
+                'invalid "lifetime_units"=="{}" in ike_policy'.format(
+                    ike_policy['lifetime_units']))
 
-    esp_policy = conn[_KEY_ESPPOLICY]
-    esp_policy['encryption_algorithm'] = \
-        map_encryption[esp_policy['encryption_algorithm']]
-    if esp_policy['lifetime_units'] != 'seconds':
-        raise ValueError(
-            'invalid "lifetime_units"=="{}" in esp_policy'.format(
-                esp_policy['lifetime_units']))
-    if esp_policy['transform_protocol'] != 'esp':
-        raise ValueError(
-            'invalid "transform_protocol"=="{}" in esp_policy'.format(
-                esp_policy['transform_protocol']))
-    pfs = esp_policy['pfs']
-    esp_policy['pfs'] = map_pfs.get(pfs, pfs)
-    if esp_policy['pfs'] not in allowed_pfs:
-        raise ValueError(
-            'invalid "pfs"=="{}" in esp_policy'.format(pfs))
-    if esp_policy['encapsulation_mode'] not in ('tunnel', 'transport'):
-        raise ValueError(
-            'invalid "encapsulation_mode"=="{}" in esp_policy'.format(
-                esp_policy['encapsulation_mode']))
+        esp_policy = conn[_KEY_ESPPOLICY]
+        esp_policy['encryption_algorithm'] = \
+            map_encryption[esp_policy['encryption_algorithm']]
+        if esp_policy['lifetime_units'] != 'seconds':
+            raise ValueError(
+                'invalid "lifetime_units"=="{}" in esp_policy'.format(
+                    esp_policy['lifetime_units']))
+        if esp_policy['transform_protocol'] != 'esp':
+            raise ValueError(
+                'invalid "transform_protocol"=="{}" in esp_policy'.format(
+                    esp_policy['transform_protocol']))
+        pfs = esp_policy['pfs']
+        esp_policy['pfs'] = map_pfs.get(pfs, pfs)
+        if esp_policy['pfs'] not in allowed_pfs:
+            raise ValueError(
+                'invalid "pfs"=="{}" in esp_policy'.format(pfs))
+        if esp_policy['encapsulation_mode'] not in ('tunnel', 'transport'):
+            raise ValueError(
+                'invalid "encapsulation_mode"=="{}" in esp_policy'.format(
+                    esp_policy['encapsulation_mode']))
+    except (ValueError, KeyError):
+        with excutils.save_and_reraise_exception():
+            raise v_exc.InvalidVPNServiceError()
 
 
 # -- Tools ------------------------
