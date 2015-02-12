@@ -241,7 +241,7 @@ def parse_vpn_connections(ipsec_sa, resources):
     return conn_ok
 
 
-def fix_svc_connection(conn):
+def validate_svc_connection(conn):
     map_encryption = {
         '3des': '3des',
         'aes-128': 'aes128',
