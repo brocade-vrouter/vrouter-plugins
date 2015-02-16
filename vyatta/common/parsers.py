@@ -222,7 +222,10 @@ class TableParser(collections.Iterable, collections.Sized):
                     raise ValueError(
                         'Unable to extract value from {0}, offs {1} end {2}: '
                         'payload too short'.format(line, offs, offs_end))
-                value.append(line[offs:offs_end])
+                # Ignore offs_end, instead use delimiter to extract value
+                # Fix for mangled ip-addr values from 'sh vpn ipsec sa'
+                # parsing
+                value.append(line[offs:].split()[0])
             value = ''.join(value)
             value = value.strip()
             result.append(value)
