@@ -230,9 +230,16 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
             subnet_id = interface_info['subnet_id']
             subnet = self._core_plugin._get_subnet(context.elevated(),
                                                    subnet_id)
+
             # Ensure the subnet has a gateway
             if not subnet['gateway_ip']:
                 msg = _('Subnet for router interface must have a gateway IP')
+                raise q_exc.BadRequest(resource='router', msg=msg)
+            if (subnet['ip_version'] == 6 and subnet['ipv6_ra_mode'] is None
+                    and subnet['ipv6_address_mode'] is not None):
+                msg = (_('IPv6 subnet %s configured to receive RAs from an '
+                       'external router cannot be added to Neutron Router.') %
+                       subnet['id'])
                 raise q_exc.BadRequest(resource='router', msg=msg)
             self._check_for_dup_router_subnet(context, router,
                                               subnet['network_id'],
@@ -251,11 +258,15 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
                     'mac_address': attributes.ATTR_NOT_SPECIFIED,
                     'admin_state_up': True,
                     'device_id': '',
-                    'device_owner': '',
+                    'device_owner': l3_constants.DEVICE_OWNER_ROUTER_INTF,
                     'name': '',
                 }
             })
             port_created = True
+
+        self._core_plugin.update_port(
+            context.elevated(), port['id'],
+            {'port': {'device_owner': '', 'device_id': ''}})
 
         try:
             self._attach_port(context, router_id, port)
@@ -397,7 +408,6 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
     def _attach_port(self, context, router_id, port, external_gw=False):
         LOG.debug("Vyatta vRouter Plugin::Attach port. "
                   "router: %s; port: %s", router_id, port)
-
         # Attach interface
         self.driver.attach_interface(context, router_id, port['id'])
 
