@@ -14,7 +14,7 @@
 #    under the License.
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 
 from neutron import context
 from neutron.db import db_base_plugin_v2
@@ -314,7 +314,8 @@ class TestVyattaVRouterPlugin(testlib_api.SqlTestCase,
             self.context, router['id'], floatingip['floating_ip_address'],
             None)
 
-CORE_PLUGIN_CLASS = ("vyatta.tests.test_vrouter_neutron_plugin.TestVRouterNatPlugin")
+CORE_PLUGIN_CLASS = (
+    "vyatta.tests.test_vrouter_neutron_plugin.TestVRouterNatPlugin")
 L3_PLUGIN_CLASS = ("vyatta.vrouter.neutron_plugin.VyattaVRouterMixin")
 
 

@@ -17,7 +17,7 @@ import os
 import time
 
 from eventlet import greenthread
-from oslo.utils import excutils
+from oslo_utils import excutils
 from sqlalchemy.orm import exc as orm_exception
 
 from neutron.db import models_v2
