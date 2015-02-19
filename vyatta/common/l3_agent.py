@@ -17,6 +17,7 @@ from novaclient.v1_1 import client as novaclient
 
 from neutron.agent.l3 import agent as l3_agent
 from neutron.agent.l3 import router_info
+from neutron.agent import l3_agent as entry
 from neutron.common import constants as l3_constants
 
 from vyatta.common import config as vyatta_config
@@ -125,3 +126,8 @@ class L3AgentMiddleware(l3_agent.L3NATAgentWithStateReport):
                 continue
             router_info_list.append(self.router_info[rid])
         return router_info_list
+
+
+def main():
+    entry.main(
+        manager='vyatta.common.l3_agent.L3AgentMiddleware')
