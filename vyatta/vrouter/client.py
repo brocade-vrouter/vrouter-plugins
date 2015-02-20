@@ -20,8 +20,8 @@ import urllib
 import netaddr
 from neutron.i18n import _LI, _LE
 from novaclient import exceptions as nova_exc
-from oslo.serialization import jsonutils
-from oslo.utils import excutils
+from oslo_serialization import jsonutils
+from oslo_utils import excutils
 import requests
 
 from vyatta.common import config

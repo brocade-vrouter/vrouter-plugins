@@ -14,8 +14,8 @@
 #    under the License.
 
 import netaddr
-from oslo.utils import excutils
-from oslo.utils import importutils
+from oslo_utils import excutils
+from oslo_utils import importutils
 from sqlalchemy.orm import exc
 
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
@@ -230,9 +230,16 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
             subnet_id = interface_info['subnet_id']
             subnet = self._core_plugin._get_subnet(context.elevated(),
                                                    subnet_id)
+
             # Ensure the subnet has a gateway
             if not subnet['gateway_ip']:
                 msg = _('Subnet for router interface must have a gateway IP')
+                raise q_exc.BadRequest(resource='router', msg=msg)
+            if (subnet['ip_version'] == 6 and subnet['ipv6_ra_mode'] is None
+                    and subnet['ipv6_address_mode'] is not None):
+                msg = (_('IPv6 subnet %s configured to receive RAs from an '
+                       'external router cannot be added to Neutron Router.') %
+                       subnet['id'])
                 raise q_exc.BadRequest(resource='router', msg=msg)
             self._check_for_dup_router_subnet(context, router,
                                               subnet['network_id'],
@@ -397,7 +404,6 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
     def _attach_port(self, context, router_id, port, external_gw=False):
         LOG.debug("Vyatta vRouter Plugin::Attach port. "
                   "router: %s; port: %s", router_id, port)
-
         # Attach interface
         self.driver.attach_interface(context, router_id, port['id'])
 

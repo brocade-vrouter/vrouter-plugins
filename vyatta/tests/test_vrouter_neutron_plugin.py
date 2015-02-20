@@ -14,7 +14,7 @@
 #    under the License.
 
 import mock
-from oslo.config import cfg
+from oslo_config import cfg
 
 from neutron import context
 from neutron.db import db_base_plugin_v2
@@ -38,7 +38,7 @@ class FakeVRouterDriver(mock.Mock):
         return _uuid()
 
 
-class VRouterTestPlugin(vrouter_plugin.VyattaVRouterPlugin,
+class VRouterTestPlugin(vrouter_plugin.VyattaVRouterMixin,
                         db_base_plugin_v2.NeutronDbPluginV2,
                         external_net_db.External_net_db_mixin):
 
@@ -314,8 +314,9 @@ class TestVyattaVRouterPlugin(testlib_api.SqlTestCase,
             self.context, router['id'], floatingip['floating_ip_address'],
             None)
 
-CORE_PLUGIN_CLASS = ("vyatta.tests.test_vrouter_neutron_plugin.TestVRouterNatPlugin")
-L3_PLUGIN_CLASS = ("vyatta.vroutetr.neutron_plugin.VyattaVRouterPlugin")
+CORE_PLUGIN_CLASS = (
+    "vyatta.tests.test_vrouter_neutron_plugin.TestVRouterNatPlugin")
+L3_PLUGIN_CLASS = ("vyatta.vrouter.neutron_plugin.VyattaVRouterMixin")
 
 
 class TestVRouterNatPlugin(test_l3_plugin.TestL3NatBasePlugin):
@@ -337,7 +338,7 @@ class VRouterTestCase(test_db_plugin.NeutronDbPluginV2TestCase,
         self._mock('eventlet.greenthread.sleep')
 
         self._mock(
-            'neutron.plugins.brocade.vyatta.vrouter_driver.'
+            'vyatta.vrouter.driver.'
             'VyattaVRouterDriver', FakeVRouterDriver)
 
         cfg.CONF.set_default('allow_overlapping_ips', True)
