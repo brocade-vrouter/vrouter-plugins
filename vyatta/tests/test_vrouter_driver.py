@@ -245,24 +245,6 @@ Description:  Brocade Vyatta 5410 vRouter 6.6 R5X3
 Copyright:    2006-2014 Vyatta, Inc.
 """
 
-IFCONFIG_OUTPUT = """dp0e2      Link encap:Ethernet  HWaddr 08:00:27:02:b4:67
-          inet6 addr: fe80::a00:27ff:fe02:b467/64 Scope:Link
-          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
-          RX packets:1001700 errors:0 dropped:0 overruns:0 frame:0
-          TX packets:805960 errors:0 dropped:0 overruns:0 carrier:0
-          collisions:0 txqueuelen:1000
-          RX bytes:344485385 (344.4 MB)  TX bytes:222325418 (222.3 MB)
-
-dp0e5      Link encap:Ethernet  HWaddr 08:00:27:4a:be:12
-          inet6 addr: fe80::a00:27ff:fe4a:be12/64 Scope:Link
-          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
-          RX packets:251 errors:0 dropped:0 overruns:0 frame:0
-          TX packets:67 errors:0 dropped:0 overruns:0 carrier:0
-          collisions:0 txqueuelen:1000
-          RX bytes:31654 (31.6 KB)  TX bytes:6628 (6.6 KB)
-
-"""
-
 SHOW_CONFIG_OUTPUT = """
 interfaces {
     ethernet eth0 {
@@ -591,14 +573,6 @@ class TestVRouterRestAPIClient(base.BaseTestCase,
         self.assertEqual(
             self._rest_mock.call_count, len(cmd_list) + 4)
 
-    def test_execute_cli_cmd(self):
-        client = self._create_client()
-        cmd = 'ls'
-        client._execute_cli_cmd(cmd)
-
-        self._rest_mock.assert_called_once_with(
-            'GET', mock.ANY, {'shell-command': cmd})
-
     def test_get_config_cmd(self):
         client = self._create_client()
         client._get_config_cmd('system/ip/disable-forwarding')
@@ -654,10 +628,11 @@ class TestLowLevelRestAPIClient(base.BaseTestCase,
         client = self._create_client()
         with mock.patch.object(
                 vyatta_client.VRouterRestAPIClient,
-                '_execute_cli_cmd') as exec_cmd:
-
-            exec_cmd.return_value = IFCONFIG_OUTPUT
-            if_id = client.get_ethernet_if_id('08:00:27:4a:be:12\n')
+                '_get_interfaces') as get_ifs:
+            get_ifs.return_value = [{'name': 'dp0e5',
+                                     'ip_addrs': '192.168.21.3',
+                                     'mac_address': '08:00:27:4a:be:12'}]
+            if_id = client.get_ethernet_if_id('08:00:27:4a:be:12')
             self.assertEqual(if_id, 'dp0e5')
 
     def test_rest_call(self):

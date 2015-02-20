@@ -14,8 +14,8 @@
 #    under the License.
 
 import netaddr
-from oslo.utils import excutils
-from oslo.utils import importutils
+from oslo_utils import excutils
+from oslo_utils import importutils
 from sqlalchemy.orm import exc
 
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
