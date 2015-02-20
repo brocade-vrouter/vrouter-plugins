@@ -580,9 +580,17 @@ class TestVRouterRestAPIClient(base.BaseTestCase,
         self.assertEqual(self._rest_mock.call_count, 3)
 
     def test_show_cmd(self):
+
+        self._rest_mock.side_effect = [
+            self._make_http_response(201, headers={'Location': '/fake-url'}),
+            self._make_http_response(200, text=SHOW_VERSION_OUTPUT),
+            self._make_http_response(410),
+            self._make_http_response(200),
+       ]
+
         client = self._create_client()
         client._show_cmd('version')
-        self.assertEqual(self._rest_mock.call_count, 3)
+        self.assertEqual(self._rest_mock.call_count, 4)
 
     def test_process_model(self):
         client = vyatta_client.VRouterRestAPIClient()
@@ -607,6 +615,19 @@ class TestVRouterRestAPIClient(base.BaseTestCase,
         interface_info = vyatta_client.InterfaceInfo(
             'eth0', '10.10.0.1')
         self.assertEqual(client._external_gw_info, interface_info)
+
+    def _make_http_response(self, status_code, headers=None, text=None):
+
+        if headers is None:
+            headers = {}
+
+        response = mock.Mock()
+        response.status_code = status_code
+        response.headers = headers
+        response.text = text
+
+        return response
+
 
 
 class TestLowLevelRestAPIClient(base.BaseTestCase,
