@@ -445,7 +445,8 @@ class VRouterRestAPIClient(object):
         return rule_num
 
     def _get_snat_exclude_cache_entry(self, src_addr, dest_addr):
-        # TODO: do we need to support same VPN src-remote pair for multiple
+        # TODO(sridhar): do we need to support same VPN
+        #  src-remote pair for multiple
         #       external GWs?
         return src_addr + "-" + dest_addr
 
@@ -453,17 +454,20 @@ class VRouterRestAPIClient(object):
                               ext_if_id, src_addr, dest_addr):
 
         """Appends vRouter cmds to add a NAT exclude rule
-         and caches the rule number in the local 'nat-exclude' dict"""
+         and caches the rule number in the local 'nat-exclude' dict
+         """
 
         cache_entry = self._get_snat_exclude_cache_entry(src_addr, dest_addr)
         try:
             # if an entry already exist, the nat exclude is already in vRouter
             rule_num = self._router_subnet_nat_exclude_dict[cache_entry]
-            LOG.info(_LI('Vyatta vRouter Reuse existing EXCLUDE rule_num : %d'), rule_num)
+            LOG.info(_LI('Vyatta vRouter Reuse existing EXCLUDE'
+            'rule_num : %d'), rule_num)
         except KeyError:
             # Get the next SNAT exclude rule number
             rule_num = self._get_next_nat_exclude_rule_num()
-            LOG.info(_LI('Vyatta vRouter Prepare new EXCLUDE rule_num : %d'), rule_num)
+            LOG.info(_LI('Vyatta vRouter Prepare new EXCLUDE'
+            'rule_num : %d'), rule_num)
 
         # Create the SNAT rule and store in the cache
         # TODO(sridhar): Unconditionally add for now due client dict bug
@@ -481,22 +485,26 @@ class VRouterRestAPIClient(object):
 
     def delete_snat_exclude_rule(self, cmd_list,
                                  ext_if_id, src_addr, dest_addr):
-        """ Appends vRouter cmds to delete a NAT exclude rule
-        and remove the rule number from the local 'nat-exclude' dict"""
+        """Appends vRouter cmds to delete a NAT exclude rule
+        and remove the rule number from the local 'nat-exclude' dict
+        """
 
         cache_entry = self._get_snat_exclude_cache_entry(src_addr, dest_addr)
         try:
             nat_rule = self._router_subnet_nat_exclude_dict[cache_entry]
             if nat_rule is not None:
-                LOG.info(_LI('Vyatta vRouter: Delete Cache EXCLUDE rule_num : %d at %s'),
+                LOG.info(_LI('Vyatta vRouter: Delete Cache EXCLUDE'
+                'rule_num : %d at %s'),
                          nat_rule, cache_entry)
                 self._delete_snat_rule_cmd(cmd_list, nat_rule)
             else:
-                LOG.info(_LI('Vyatta vRouter: Delete Cache EXCLUDE entry at %s doesnt exist'),
+                LOG.info(_LI('Vyatta vRouter: Delete Cache EXCLUDE'
+                'entry at %s doesnt exist'),
                          nat_rule, cache_entry)
         except KeyError:
-                LOG.info(_LI('Vyatta vRouter: Delete Cache EXCLUDE: COULD NOT find rule_num at cache entry at %s'), cache_entry)
-            
+                LOG.info(_LI('Vyatta vRouter: Delete Cache EXCLUDE:'
+                'COULD NOT find rule_num at cache entry at %s'), cache_entry)
+
     def _get_subnet_from_ip_address(self, ip_address):
 
         ip_network = netaddr.IPNetwork(ip_address)
@@ -576,11 +584,13 @@ class VRouterRestAPIClient(object):
     def _add_snat_exclude_rule_cmd(self, cmd_list, rule_num, ext_if_id,
                                    src_addr, dest_addr):
         """"Create SNAT exclude rule between tenant networks and
-            remote VPN CIDR"""
+            remote VPN CIDR
+            """
 
         nat_cmd = self._get_nat_cmd()
 
-        LOG.info(_LI('Vyatta vRouter Adding EXCLUDE rule_num : %s, ext_if_id %s, src_addr %s, dest_addr %s'),
+        LOG.info(_LI('Vyatta vRouter Adding EXCLUDE rule_num'
+        ': %s, ext_if_id %s, src_addr %s, dest_addr %s'),
                  rule_num, ext_if_id, src_addr, dest_addr)
 
         # Execute the commands
@@ -974,7 +984,7 @@ class VRouterRestAPIClient(object):
                     self._nat_subnet_ip_rule_num = rule_num
                 elif (self._MAX_NAT_FLOATING_IP_RULE_NUM < rule_num <
                     self._MAX_NAT_EXCLUDE_RULE_NUM and
-                    src_addr in self._router_if_subnet_dict): 
+                    src_addr in self._router_if_subnet_dict):
                     # TODO(sridhar): Add parsing code for exclude nat rule
                     pass
                 elif rule_num < self._MAX_NAT_FLOATING_IP_RULE_NUM:
@@ -1150,4 +1160,3 @@ class InterfaceInfo(object):
 
     def __repr(self):
         return self.__str__()
-
