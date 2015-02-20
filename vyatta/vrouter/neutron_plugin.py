@@ -258,15 +258,11 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
                     'mac_address': attributes.ATTR_NOT_SPECIFIED,
                     'admin_state_up': True,
                     'device_id': '',
-                    'device_owner': l3_constants.DEVICE_OWNER_ROUTER_INTF,
+                    'device_owner': '',
                     'name': '',
                 }
             })
             port_created = True
-
-        self._core_plugin.update_port(
-            context.elevated(), port['id'],
-            {'port': {'device_owner': '', 'device_id': ''}})
 
         try:
             self._attach_port(context, router_id, port)
