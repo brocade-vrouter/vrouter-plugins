@@ -446,8 +446,8 @@ class VRouterRestAPIClient(object):
 
     def _get_snat_exclude_cache_entry(self, src_addr, dest_addr):
         # TODO(sridhar): do we need to support same VPN
-        #  src-remote pair for multiple
-        #       external GWs?
+        # src-remote pair for multiple
+        # external GWs?
         return src_addr + "-" + dest_addr
 
     def add_snat_exclude_rule(self, cmd_list,
@@ -462,12 +462,12 @@ class VRouterRestAPIClient(object):
             # if an entry already exist, the nat exclude is already in vRouter
             rule_num = self._router_subnet_nat_exclude_dict[cache_entry]
             LOG.info(_LI('Vyatta vRouter Reuse existing EXCLUDE'
-            'rule_num : %d'), rule_num)
+                         ' rule_num : %d'), rule_num)
         except KeyError:
             # Get the next SNAT exclude rule number
             rule_num = self._get_next_nat_exclude_rule_num()
             LOG.info(_LI('Vyatta vRouter Prepare new EXCLUDE'
-            'rule_num : %d'), rule_num)
+                         ' rule_num : %d'), rule_num)
 
         # Create the SNAT rule and store in the cache
         # TODO(sridhar): Unconditionally add for now due client dict bug
@@ -499,11 +499,12 @@ class VRouterRestAPIClient(object):
                 self._delete_snat_rule_cmd(cmd_list, nat_rule)
             else:
                 LOG.info(_LI('Vyatta vRouter: Delete Cache EXCLUDE'
-                'entry at %s doesnt exist'),
+                             ' entry at %s doesnt exist'),
                          nat_rule, cache_entry)
         except KeyError:
                 LOG.info(_LI('Vyatta vRouter: Delete Cache EXCLUDE:'
-                'COULD NOT find rule_num at cache entry at %s'), cache_entry)
+                             ' COULD NOT find rule_num at cache entry'
+                             ' at %s'), cache_entry)
 
     def _get_subnet_from_ip_address(self, ip_address):
 
@@ -583,14 +584,14 @@ class VRouterRestAPIClient(object):
 
     def _add_snat_exclude_rule_cmd(self, cmd_list, rule_num, ext_if_id,
                                    src_addr, dest_addr):
-        """"Create SNAT exclude rule between tenant networks and
+        """Create SNAT exclude rule between tenant networks and
             remote VPN CIDR
             """
 
         nat_cmd = self._get_nat_cmd()
 
         LOG.info(_LI('Vyatta vRouter Adding EXCLUDE rule_num'
-        ': %s, ext_if_id %s, src_addr %s, dest_addr %s'),
+                     ' : %s, ext_if_id %s, src_addr %s, dest_addr %s'),
                  rule_num, ext_if_id, src_addr, dest_addr)
 
         # Execute the commands
