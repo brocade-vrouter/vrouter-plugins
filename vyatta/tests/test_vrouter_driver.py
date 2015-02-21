@@ -363,12 +363,11 @@ class TestVRouterRestAPIClient(base.BaseTestCase,
             action=action)
 
         self._rest_mock.assert_any_call(
-            'PUT', prefix + '/address/' + interface_info['ip_address'],
-            session=mock.ANY)
+            'PUT', prefix + '/address/' + interface_info['ip_address'])
         self._rest_mock.assert_any_call(
-            'POST', '/location/commit', session=mock.ANY)
+            'POST', '/location/commit')
         self._rest_mock.assert_any_call(
-            'POST', '/location/save', session=mock.ANY)
+            'POST', '/location/save')
 
     def test_init_router(self):
         client = self._create_client()
@@ -377,7 +376,7 @@ class TestVRouterRestAPIClient(base.BaseTestCase,
 
         self._rest_mock.assert_any_call(
             'PUT', '/location/delete/system/ip/disable-forwarding',
-            session=mock.ANY)
+        )
 
     def test_add_interface_to_router(self):
 
@@ -463,7 +462,7 @@ class TestVRouterRestAPIClient(base.BaseTestCase,
         self._check_update_interface('set', gw_info)
         self._rest_mock.assert_any_call(
             'PUT', '/location/set/protocols/static/route/0.0.0.0%2F0/next-hop/'
-            + gw_info['gateway_ip'], session=mock.ANY)
+            + gw_info['gateway_ip'])
 
         self._rest_mock.reset_mock()
 
@@ -471,8 +470,7 @@ class TestVRouterRestAPIClient(base.BaseTestCase,
 
         self._check_update_interface('delete', gw_info)
         self._rest_mock.assert_any_call(
-            'PUT', '/location/delete/protocols/static/route/0.0.0.0%2F0',
-            session=mock.ANY)
+            'PUT', '/location/delete/protocols/static/route/0.0.0.0%2F0')
 
     def test_get_nat_cmd(self):
         client = self._create_client()
@@ -580,9 +578,16 @@ class TestVRouterRestAPIClient(base.BaseTestCase,
         self.assertEqual(self._rest_mock.call_count, 3)
 
     def test_show_cmd(self):
+
+        self._rest_mock.side_effect = [
+            self._make_http_response(201, headers={'Location': '/fake-url'}),
+            self._make_http_response(200, text=SHOW_VERSION_OUTPUT),
+            self._make_http_response(410),
+            self._make_http_response(200)]
+
         client = self._create_client()
         client._show_cmd('version')
-        self.assertEqual(self._rest_mock.call_count, 3)
+        self.assertEqual(self._rest_mock.call_count, 4)
 
     def test_process_model(self):
         client = vyatta_client.VRouterRestAPIClient()
@@ -608,10 +613,21 @@ class TestVRouterRestAPIClient(base.BaseTestCase,
             'eth0', '10.10.0.1')
         self.assertEqual(client._external_gw_info, interface_info)
 
+    def _make_http_response(self, status_code, headers=None, text=None):
+
+        if headers is None:
+            headers = {}
+
+        response = mock.Mock()
+        response.status_code = status_code
+        response.headers = headers
+        response.text = text
+
+        return response
+
 
 class TestLowLevelRestAPIClient(base.BaseTestCase,
                                 VRouterRestAPIClientMixin):
-
     def test_get_admin_state(self):
 
         client = self._create_client()
