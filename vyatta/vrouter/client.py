@@ -494,7 +494,7 @@ class VRouterRestAPIClient(object):
             nat_rule = self._router_subnet_nat_exclude_dict[cache_entry]
             if nat_rule is not None:
                 LOG.info(_LI('Vyatta vRouter: Delete Cache EXCLUDE'
-                'rule_num : %d at %s'),
+                             ' rule_num : %d at %s'),
                          nat_rule, cache_entry)
                 self._delete_snat_rule_cmd(cmd_list, nat_rule)
             else:
@@ -585,8 +585,8 @@ class VRouterRestAPIClient(object):
     def _add_snat_exclude_rule_cmd(self, cmd_list, rule_num, ext_if_id,
                                    src_addr, dest_addr):
         """Create SNAT exclude rule between tenant networks and
-            remote VPN CIDR
-            """
+        remote VPN CIDR
+        """
 
         nat_cmd = self._get_nat_cmd()
 
