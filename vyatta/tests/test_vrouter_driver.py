@@ -583,8 +583,7 @@ class TestVRouterRestAPIClient(base.BaseTestCase,
             self._make_http_response(201, headers={'Location': '/fake-url'}),
             self._make_http_response(200, text=SHOW_VERSION_OUTPUT),
             self._make_http_response(410),
-            self._make_http_response(200),
-       ]
+            self._make_http_response(200)]
 
         client = self._create_client()
         client._show_cmd('version')
@@ -627,10 +626,8 @@ class TestVRouterRestAPIClient(base.BaseTestCase,
         return response
 
 
-
 class TestLowLevelRestAPIClient(base.BaseTestCase,
                                 VRouterRestAPIClientMixin):
-
     def test_get_admin_state(self):
 
         client = self._create_client()

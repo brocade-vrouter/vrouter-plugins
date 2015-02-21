@@ -20,7 +20,7 @@ import logging
 import urllib
 import uuid
 
-from oslo.utils import excutils
+from oslo_utils import excutils
 import six
 
 from neutron.i18n import _LE, _LI
