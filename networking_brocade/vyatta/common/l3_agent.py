@@ -130,4 +130,4 @@ class L3AgentMiddleware(l3_agent.L3NATAgentWithStateReport):
 
 def main():
     entry.main(
-        manager='vyatta.common.l3_agent.L3AgentMiddleware')
+        manager='networking_brocade.vyatta.common.l3_agent.L3AgentMiddleware')
