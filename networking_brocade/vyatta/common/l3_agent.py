@@ -20,9 +20,9 @@ from neutron.agent.l3 import router_info
 from neutron.agent import l3_agent as entry
 from neutron.common import constants as l3_constants
 
-from vyatta.common import config as vyatta_config
-from vyatta.common import exceptions as v_exc
-from vyatta.vrouter import client as vyatta_client
+from networking_brocade.vyatta.common import config as vyatta_config
+from networking_brocade.vyatta.common import exceptions as v_exc
+from networking_brocade.vyatta.vrouter import client as vyatta_client
 
 
 _KEY_VYATTA_EXTRA_DATA = '_vyatta'
@@ -63,7 +63,7 @@ class L3AgentMiddleware(l3_agent.L3NATAgentWithStateReport):
 
     def _router_added(self, router_id, router):
         ri = router_info.RouterInfo(
-            router_id, router, self.root_helper, self.conf, self.driver)
+            router_id, router, self.conf, self.driver)
         self.router_info[router_id] = ri
         self.process_router_add(ri)
 
@@ -130,4 +130,4 @@ class L3AgentMiddleware(l3_agent.L3NATAgentWithStateReport):
 
 def main():
     entry.main(
-        manager='vyatta.common.l3_agent.L3AgentMiddleware')
+        manager='networking_brocade.vyatta.common.l3_agent.L3AgentMiddleware')
