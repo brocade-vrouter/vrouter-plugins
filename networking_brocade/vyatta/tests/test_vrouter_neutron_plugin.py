@@ -22,12 +22,11 @@ from neutron.db import external_net_db
 from neutron.db import models_v2
 from neutron.extensions import l3
 from neutron.openstack.common import uuidutils
-from neutron.tests.unit import test_db_plugin
 from neutron.tests.unit import test_l3_plugin
-from neutron.tests.unit import testlib_api
 from neutron.tests.unit import testlib_plugin
 
 from networking_brocade.vyatta.common import utils as vyatta_utils
+from networking_brocade.vyatta.tests import base
 from networking_brocade.vyatta.vrouter import neutron_plugin as vrouter_plugin
 
 _uuid = uuidutils.generate_uuid
@@ -46,7 +45,7 @@ class VRouterTestPlugin(vrouter_plugin.VyattaVRouterMixin,
         super(VRouterTestPlugin, self).delete_port(context, port_id)
 
 
-class TestVyattaVRouterPlugin(testlib_api.SqlTestCase,
+class TestVyattaVRouterPlugin(base.SqlTestCase,
                               testlib_plugin.PluginSetupHelper):
     def setUp(self):
         super(TestVyattaVRouterPlugin, self).setUp()
@@ -326,7 +325,7 @@ class TestVRouterNatPlugin(test_l3_plugin.TestL3NatBasePlugin):
     supported_extension_aliases = ["external-net"]
 
 
-class VRouterTestCase(test_db_plugin.NeutronDbPluginV2TestCase,
+class VRouterTestCase(base.NeutronDbPluginV2TestCase,
                       test_l3_plugin.L3NatTestCaseBase,
                       testlib_plugin.NotificationSetupHelper):
     def setUp(self, core_plugin=None, l3_plugin=None, ext_mgr=None):
