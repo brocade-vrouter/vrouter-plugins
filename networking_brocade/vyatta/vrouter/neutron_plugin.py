@@ -37,10 +37,10 @@ from neutron.i18n import _LE
 from neutron.openstack.common import log as logging
 from neutron.plugins.common import constants
 
-from vyatta.common import config
-from vyatta.common import exceptions as v_exc
-from vyatta.common import utils as vyatta_utils
-from vyatta.vrouter import driver as vrouter_driver
+from networking_brocade.vyatta.common import config
+from networking_brocade.vyatta.common import exceptions as v_exc
+from networking_brocade.vyatta.common import utils as vyatta_utils
+from networking_brocade.vyatta.vrouter import driver as vrouter_driver
 
 
 LOG = logging.getLogger(__name__)
@@ -161,6 +161,8 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
     def delete_router(self, context, router_id):
         LOG.debug("Vyatta vRouter Plugin::Delete router: %s", router_id)
 
+        gw_port = None
+
         with context.session.begin(subtransactions=True):
             router = self._get_router(context, router_id)
 
@@ -175,12 +177,14 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
                                                 filters=device_filter)
 
             if ports:
-                port = ports[0]
+                gw_port = ports[0]
                 router.gw_port = None
                 context.session.add(router)
 
-                self._delete_router_port(context, router_id, port)
+        if gw_port:
+            self._delete_router_port(context, router_id, gw_port)
 
+        with context.session.begin(subtransactions=True):
             context.session.delete(router)
 
         self.driver.delete_router(context, router_id)
