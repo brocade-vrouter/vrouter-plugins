@@ -15,35 +15,8 @@
 
 from oslo_config import cfg
 
-
-cfg.CONF.register_opts([
-    cfg.StrOpt('tenant_admin_name', help=_('Name of tenant admin user.')),
-    cfg.StrOpt('tenant_admin_password', secret=True,
-               help=_('Tenant admin password.')),
-    cfg.StrOpt('tenant_id',
-               help=_('UUID of tenant that holds Vyatta vRouter instances.')),
-    cfg.StrOpt('image_id',
-               help=_('Nova image id for instances of Vyatta vRouter.')),
-    cfg.StrOpt('flavor', default=2,
-               help=_('Nova VM flavor for instances of Vyatta vRouter.')),
-    cfg.StrOpt('management_network_id',
-               help=_('Vyatta vRouter management network id.')),
-    cfg.StrOpt('vrouter_credentials', default="vyatta:vyatta",
-               help=_('Vyatta vRouter login credentials')),
-    cfg.IntOpt('nova_poll_interval', default=5,
-               help=_('Number of seconds between consecutive Nova queries '
-                      'when waiting for router instance status change.')),
-    cfg.IntOpt('nova_spawn_timeout', default=300,
-               help=_('Number of seconds to wait for Nova to activate '
-                      'instance before setting resource to error state.')),
-    cfg.IntOpt('vrouter_poll_interval', default=5,
-               help=_('Number of seconds between consecutive Vyatta vRouter '
-                      'queries when waiting for router instance boot.')),
-    cfg.IntOpt('vrouter_boot_timeout', default=300,
-               help=_('Number of seconds to wait for Vyatta vRouter to boot '
-                      'before setting resource to error state.')),
-    cfg.StrOpt('keystone_url', help=_('Keystone URL.')),
-], "VROUTER")
+# Required for compatibility to register vyatta options
+from neutron.services.l3_router.brocade.vyatta import config
 
 
 # setup shortcuts
