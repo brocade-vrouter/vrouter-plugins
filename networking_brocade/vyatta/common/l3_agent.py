@@ -13,6 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import eventlet
+eventlet.monkey_patch()
+
 from novaclient.v1_1 import client as novaclient
 
 from neutron.agent.l3 import agent as l3_agent
