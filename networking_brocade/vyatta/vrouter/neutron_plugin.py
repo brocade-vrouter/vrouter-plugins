@@ -14,6 +14,7 @@
 #    under the License.
 
 import netaddr
+from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import importutils
 from sqlalchemy.orm import exc
@@ -34,7 +35,6 @@ from neutron.db import l3_gwmode_db
 from neutron.db import models_v2
 from neutron.extensions import l3
 from neutron.i18n import _LE
-from neutron.openstack.common import log as logging
 from neutron.plugins.common import constants
 
 from networking_brocade.vyatta.common import config
@@ -470,6 +470,7 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
             router.gw_port = None
             context.session.add(router)
             context.session.expire(gw_port)
+            self._check_router_gw_port_in_use(context, router_id)
 
         self._delete_router_port(
             context, router_id, gw_port, external_gw=True)
