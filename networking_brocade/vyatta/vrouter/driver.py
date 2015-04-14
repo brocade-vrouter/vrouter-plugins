@@ -114,7 +114,7 @@ class VyattaVRouterDriver(object):
         vrouter_api = self._get_router_api(context, router_id)
         vrouter_api.update_router(external_gateway_info=interface_infos[0])
 
-    def clear_gateway(self, context, router_id, interface_infos):
+    def clear_gateway(self, context, router_id):
         LOG.debug("Vyatta vRouter Driver::Clear gateway")
         vrouter_api = self._get_router_api(context, router_id)
         vrouter_api.update_router(external_gateway_info=None)

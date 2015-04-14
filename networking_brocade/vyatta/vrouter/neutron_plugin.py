@@ -463,10 +463,7 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
                 router_id=router_id, net_id=router.gw_port['network_id'])
 
         gw_port = router.gw_port
-        self.driver.clear_gateway(
-            context, router_id,
-            self._get_interface_infos(context.elevated(),
-                                      gw_port))
+        self.driver.clear_gateway(context, router_id)
         with context.session.begin(subtransactions=True):
             router.gw_port = None
             context.session.add(router)
