@@ -450,6 +450,17 @@ class VyattaVRouterMixin(common_db_mixin.CommonDbMixin,
             self._create_gw_port(context, router_id, router, network_id,
                                  ext_ips)
 
+    def _update_current_gw_port(self, context, router_id, router, ext_ips):
+        super(VyattaVRouterMixin, self)._update_current_gw_port(
+            context, router_id, router, ext_ips)
+
+        port = router.gw_port
+
+        self.driver.clear_gateway(context, router_id)
+        self.driver.configure_gateway(
+            context, router_id,
+            self._get_interface_infos(context.elevated(), port))
+
     def _delete_current_gw_port(self, context, router_id, router, new_network):
         """Delete gw port if attached to an old network or IPs changed."""
         port_requires_deletion = (
