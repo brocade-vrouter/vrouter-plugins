@@ -29,6 +29,7 @@ from networking_brocade.vyatta.common import exceptions as v_exc
 from networking_brocade.vyatta.common import globals as vyatta_globals
 from networking_brocade.vyatta.common import parsers
 from networking_brocade.vyatta.common import utils as vyatta_utils
+from networking_brocade.vyatta.common import vrouter_config
 
 
 LOG = logging.getLogger(__name__)
@@ -684,16 +685,12 @@ class VRouterRestAPIClient(object):
 
         LOG.debug('Vyatta vRouter:get_ethernet_if_id. Given MAC {0}'
                   .format(repr(mac_address)))
-        mac_address = mac_address.strip().lower()
-        ifaces = self._get_interfaces()
-        for iface in ifaces:
-            if iface['mac_address'] == mac_address:
-                return iface['name']
+        iface = self._find_interface(mac_address)
+        return iface['name']
 
-        raise v_exc.VRouterOperationError(
-            ip_address=self.address,
-            reason='Ethernet interface with Mac-address {0} does not exist'
-            .format(mac_address))
+    def get_config(self):
+        raw_config = self._show_cmd('configuration/all')
+        return vrouter_config.RouterConfig.from_string(raw_config)
 
     def _get_interface_cmd(self):
         if self._vrouter_model == self._VROUTER_VR_MODEL:
@@ -1017,6 +1014,19 @@ class VRouterRestAPIClient(object):
     def _get_interfaces(self):
         output = self._show_cmd('interfaces/detail')
         return parsers.parse_interfaces(output)
+
+    def _find_interface(self, mac_address):
+        mac_address = mac_address.strip().lower()
+        ifaces = self._get_interfaces()
+        for iface in ifaces:
+            if iface['mac_address'] == mac_address:
+                return iface
+
+        raise v_exc.VRouterOperationError(
+            ip_address=self.address,
+            reason='Ethernet interface with Mac-address {0} does not exist'
+            .format(mac_address))
+
 
 
 class ClientsPool(object):
