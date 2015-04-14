@@ -200,6 +200,27 @@ class VRouterRestAPIClient(object):
         # Remove the router interface info from cache
         self._router_if_subnet_dict.pop(router_if_subnet, None)
 
+    def update_interface(self, interface_info):
+        if_name = self.get_ethernet_if_id(interface_info.mac_address)
+        router_config = self.get_config()
+        if_config = router_config.find_interface(if_name)
+
+        old_addrs = set(netaddr.IPNetwork(ip)
+                        for ip in if_config.getlist('address'))
+        new_addrs = set(interface_info.ip_addresses)
+
+        cmd_list = []
+
+        for ip in old_addrs - new_addrs:
+            self._delete_ethernet_ip_cmd(cmd_list, if_name, str(ip))
+            # TODO(asaprykin): Configure SNAT
+
+        for ip in new_addrs - old_addrs:
+            self._set_ethernet_ip(cmd_list, if_name, str(ip))
+            # TODO(asaprykin): Configure SNAT
+
+        self.exec_cmd_batch(cmd_list)
+
     def assign_floating_ip(self, floating_ip, fixed_ip):
         """Creates SNAT and DNAT rules for given floating ip and fixed ip."""
 

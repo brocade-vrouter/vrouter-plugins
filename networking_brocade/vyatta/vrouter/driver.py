@@ -21,6 +21,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from sqlalchemy.orm import exc as orm_exception
 
+from neutron.common import log
 from neutron.db import models_v2
 from neutron.i18n import _LE, _LI
 from novaclient import exceptions as nova_exc
@@ -92,6 +93,11 @@ class VyattaVRouterDriver(object):
         vrouter_api = self._get_router_api(context, router_id)
         for interface_info in interface_infos:
             vrouter_api.add_interface_to_router(interface_info)
+
+    @log.log
+    def update_interface(self, context, router_id, interface_info):
+        vrouter_api = self._get_router_api(context, router_id)
+        vrouter_api.update_interface(interface_info)
 
     def deconfigure_interface(self, context, router_id, interface_infos):
         LOG.debug("Vyatta vRouter Driver::Deconfigure interface")
