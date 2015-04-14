@@ -152,12 +152,13 @@ class VRouterRestAPIClient(object):
                                   if_ip_address,
                                   self._ROUTER_INTERFACE_DESCR)
 
-        router_if_subnet = self._get_subnet_from_ip_address(if_ip_address)
+        ip_network = netaddr.IPNetwork(if_ip_address)
+        router_if_subnet = str(ip_network.cidr)
 
         # If external gateway was configured before then
         # we need to add SNAT rules
         rule_num = None
-        if self._external_gw_info is not None:
+        if ip_network.version == 4 and self._external_gw_info is not None:
             rule_num = self._add_snat_rule_for_router_if_cmd(
                 cmd_list, router_if_subnet, self._external_gw_info)
 
@@ -401,9 +402,11 @@ class VRouterRestAPIClient(object):
         # Add NAT rules for the existing router interfaces
         nat_rules = {}
         for router_if_subnet in self._router_if_subnet_dict.keys():
-            rule_num = self._add_snat_rule_for_router_if_cmd(cmd_list,
-                                                             router_if_subnet,
-                                                             gw_info)
+            if netaddr.IPNetwork(router_if_subnet).version != 4:
+                continue
+
+            rule_num = self._add_snat_rule_for_router_if_cmd(
+                cmd_list, router_if_subnet, gw_info)
             nat_rules[router_if_subnet] = rule_num
 
         return nat_rules
