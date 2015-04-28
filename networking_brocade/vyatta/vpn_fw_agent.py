@@ -25,4 +25,5 @@ class VyattaVPNFirewallAgent(fwaas_agent.VyattaFirewallAgent,
 
 def main():
     entry.main(
-        manager='networking_brocade.vyatta.vpn_fw_agent.VyattaVPNFirewallAgent')
+        manager='networking_brocade.vyatta.vpn_fw_agent.'
+                'VyattaVPNFirewallAgent')

@@ -20,12 +20,15 @@ from neutron import context
 from neutron.db import db_base_plugin_v2
 from neutron.db import external_net_db
 from neutron.db import models_v2
+from neutron.db import securitygroups_rpc_base as sg_db_rpc
 from neutron.extensions import l3
 from neutron.openstack.common import uuidutils
-from neutron.tests.unit import test_l3_plugin
+from neutron.tests.unit.db import test_db_base_plugin_v2 as test_db_plugin
+from neutron.tests.unit.extensions import test_l3 as test_l3_plugin
+from neutron.tests.unit import testlib_api
+
 
 from networking_brocade.vyatta.common import utils as vyatta_utils
-from networking_brocade.vyatta.tests import base
 from networking_brocade.vyatta.vrouter import neutron_plugin as vrouter_plugin
 
 _uuid = uuidutils.generate_uuid
@@ -38,13 +41,14 @@ class FakeVRouterDriver(mock.Mock):
 
 class VRouterTestPlugin(vrouter_plugin.VyattaVRouterMixin,
                         db_base_plugin_v2.NeutronDbPluginV2,
-                        external_net_db.External_net_db_mixin):
+                        external_net_db.External_net_db_mixin,
+                        sg_db_rpc.SecurityGroupServerRpcMixin):
 
     def delete_port(self, context, port_id, l3_port_check=False):
         super(VRouterTestPlugin, self).delete_port(context, port_id)
 
 
-class TestVyattaVRouterPlugin(base.SqlTestCase):
+class TestVyattaVRouterPlugin(testlib_api.SqlTestCase):
     def setUp(self):
         super(TestVyattaVRouterPlugin, self).setUp()
 
@@ -319,11 +323,12 @@ L3_PLUGIN_CLASS = (
     "networking_brocade.vyatta.vrouter.neutron_plugin.VyattaVRouterMixin")
 
 
-class TestVRouterNatPlugin(test_l3_plugin.TestL3NatBasePlugin):
+class TestVRouterNatPlugin(test_l3_plugin.TestL3NatBasePlugin,
+                           sg_db_rpc.SecurityGroupServerRpcMixin):
     supported_extension_aliases = ["external-net"]
 
 
-class VRouterTestCase(base.NeutronDbPluginV2TestCase,
+class VRouterTestCase(test_db_plugin.NeutronDbPluginV2TestCase,
                       test_l3_plugin.L3NatTestCaseBase):
     def setUp(self, core_plugin=None, l3_plugin=None, ext_mgr=None):
 
@@ -364,3 +369,6 @@ class VRouterTestCase(base.NeutronDbPluginV2TestCase,
     def test_router_delete_dhcpv6_stateless_subnet_inuse_returns_409(self):
         self.skipTest("Fails because router port is created with"
                       " empty device owner")
+
+    def test_router_add_gateway_no_subnet(self):
+        self.skipTest("Skip because it is not supported.")
