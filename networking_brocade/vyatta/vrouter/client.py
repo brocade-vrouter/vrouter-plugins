@@ -31,6 +31,7 @@ from networking_brocade.vyatta.common import globals as vyatta_globals
 from networking_brocade.vyatta.common import parsers
 from networking_brocade.vyatta.common import utils as vyatta_utils
 from networking_brocade.vyatta.common import vrouter_config
+from networking_brocade.vyatta.fw import config as fw_config
 
 
 LOG = logging.getLogger(__name__)
@@ -51,8 +52,8 @@ class VRouterRestAPIClient(object):
     REST_RETRY_LIMIT = 10
     REST_RETRY_DELAY = 5
 
-    _VROUTER_VSE_MODEL = 54
-    _VROUTER_VR_MODEL = 56
+    _VROUTER_VSE_MODEL = config.VROUTER_VSE_MODEL
+    _VROUTER_VR_MODEL = config.VROUTER_VR_MODEL
 
     # Floating ip NAT rules will be prioritized before subnet NAT rules.
     # Same rule number is used for both SNAT and DNAT rule.
@@ -67,6 +68,9 @@ class VRouterRestAPIClient(object):
     _router_if_subnet_dict = {}
     _router_subnet_nat_exclude_dict = {}
     _floating_ip_dict = {}
+
+    # Stores Current configuration commands
+    _current_config_commands = None
 
     # Floating IP NAT rule number counter.
     # It will be incremented in get next method.
@@ -795,6 +799,19 @@ class VRouterRestAPIClient(object):
 
         self.configure_cmd_list(cmd_type, [cmd])
 
+    def get_firewall_command(self, cmd):
+        """Returns the corresponding FW cli based on vrouter model"
+        """
+        return (fw_config.fw_commands[self._vrouter_model][cmd])
+
+    def get_zone_command(self, cmd):
+        """Returns the corresponding Zone cli based on vrouter model"
+        """
+        return (fw_config.zone_commands[self._vrouter_model][cmd])
+
+    def does_firewall_command_exist(self, cmd):
+        return (fw_config.fw_commands[self._vrouter_model].has_key(cmd))
+
     def exec_cmd_batch(self, user_cmd_list):
         """Executes the given configuration command list.
 
@@ -802,7 +819,7 @@ class VRouterRestAPIClient(object):
         """
         response = self._rest_call("POST", "/rest/conf")
         self._check_response(response)
-
+        prev_config = self._show_cmd("configuration/commands")
         config_url = response.headers['Location']
         if config_url is None:
             raise v_exc.VRouterOperationError(
@@ -814,18 +831,27 @@ class VRouterRestAPIClient(object):
             url = user_cmd.make_url(config_url)
             LOG.debug(
                 "Vyatta vRouter REST API: Config command %s", url)
+            if ((self._vrouter_model == self._VROUTER_VR_MODEL) and
+                               (user_cmd.get_cmd_type() == "delete")):
+                set_cmd = "set/"+user_cmd.get_cmd()
+                set_cmd = set_cmd.replace('/',' ')
+                prev_config = prev_config.replace("'","")
+                if urllib.unquote_plus(set_cmd) not in prev_config:
+                    LOG.debug("Vyatta vRouter REST API:"
+                          "Configuration does not exist , so skipping delete");
+                    continue
             response = self._rest_call("PUT", url)
             self._check_response(response, config_url)
 
         response = self._rest_call(
-            "POST", config_url + "/commit")
+                     "POST", config_url + "/commit")
         LOG.debug("Vyatta vRouter REST API: %s/commit", config_url)
         self._check_response(response, config_url)
-
-        response = self._rest_call(
-            "POST", config_url + "/save")
-        LOG.debug("Vyatta vRouter REST API: %s/save", config_url)
-        self._check_response(response, config_url)
+        if ("No changes to commit" not in response.text):    
+            response = self._rest_call(
+                 "POST", config_url + "/save")
+            LOG.debug("Vyatta vRouter REST API: %s/save", config_url)
+            self._check_response(response, config_url)
 
         response = self._rest_call("DELETE", config_url)
         self._check_response(response)
@@ -837,16 +863,18 @@ class VRouterRestAPIClient(object):
 
         if response.status_code not in (requests.codes.OK,
                                         requests.codes.CREATED):
-            LOG.error(_LE('Vyatta vRouter REST API: Response Status : '
+            if not (response.status_code == 400 and (
+                    "No changes to commit" in response.text)): 
+                LOG.error(_LE('Vyatta vRouter REST API: Response Status : '
                       '%(status)s Reason: %(reason)s') %
                       {'status': response.status_code,
                        'reason': response.reason})
 
-            if config_url is not None:
-                self._rest_call("DELETE", config_url, session=session)
+                if config_url is not None:
+                     self._rest_call("DELETE", config_url, session=session)
 
-            raise v_exc.VRouterOperationError(
-                ip_address=self.address, reason=response.reason)
+                raise v_exc.VRouterOperationError(
+                     ip_address=self.address, reason=response.reason)
 
     def _get_config_cmd(self, user_cmd):
         """Executes the given "get config" command."""
@@ -901,12 +929,12 @@ class VRouterRestAPIClient(object):
         LOG.debug('Vyatta vRouter REST API: Version output : %s',
                   show_output)
         if show_output is not None:
-            ma = re.compile(".+Description.+Brocade Vyatta\D+(\d+).+",
+            ma = re.compile(".+Description.+Brocade (Vyatta|vRouter)\D+(\d+).+",
                             re.DOTALL)
             result = ma.match(show_output)
             LOG.debug('Vyatta vRouter REST API: Result : %s', result)
             if result is not None:
-                model_str = result.group(1)
+                model_str = result.group(2)
                 LOG.debug('Vyatta vRouter REST API: Result : %s',
                           model_str)
                 model = int(model_str) / 100
@@ -925,23 +953,21 @@ class VRouterRestAPIClient(object):
 
     def _sync_cache(self):
 
-        show_output = self._show_cmd("configuration/all")
-
+        show_config_commands = self._show_cmd("configuration/commands")
+        self._current_config_command = show_config_commands
         system_gw = None
-        gateway_str = self._get_config_block("protocols", show_output)
-        if gateway_str is not None:
-            system_gw = self._parse_system_gateway(gateway_str)
+        system_gw = self._parse_system_gateway(show_config_commands)
 
-        interfaces_str = self._get_config_block("interfaces", show_output)
-        if interfaces_str is not None:
-            self._process_interfaces(interfaces_str, system_gw)
+        #interfaces_str = self._get_config_block("interfaces", show_output)
+        #if interfaces_str is not None:
+        self._process_interfaces(show_config_commands, system_gw)
 
-        if self._vrouter_model == self._VROUTER_VR_MODEL:
-            show_output = self._get_config_block("service", show_output)
+        #if self._vrouter_model == self._VROUTER_VR_MODEL:
+        #    show_output = self._get_config_block("service", show_output)
 
-        nat_str = self._get_config_block("nat", show_output)
-        if nat_str is not None:
-            self._process_source_nat_rules(nat_str)
+        #nat_str = self._get_config_block("nat", show_output)
+        #if nat_str is not None:
+        self._process_source_nat_rules(show_config_commands)
 
         LOG.info(_LI("Vyatta vRouter cache ext gw %s"),
                  self._external_gw_info)
@@ -958,71 +984,85 @@ class VRouterRestAPIClient(object):
         LOG.info(_LI("Vyatta vRouter cache NAT exclude rule num %s"),
                  self._nat_exclude_rule_num)
 
-    def _parse_system_gateway(self, search_str):
+    def get_vrouter_api_details(self):
+
+        LOG.info(_LI("Address %s"),
+                 self.address)
+        LOG.info(_LI("Vyatta vRouter cache ext gw %s"),
+                 self._external_gw_info)
+        LOG.info(_LI("Vyatta vRouter cache router if dict %s"),
+                 self._router_if_subnet_dict)
+        LOG.info(_LI("Vyatta vRouter cache floating ip dict %s"),
+                 self._floating_ip_dict)
+        LOG.info(_LI("Vyatta vRouter cache router nat-exclude dict %s"),
+                 self._router_subnet_nat_exclude_dict)
+        LOG.info(_LI("Vyatta vRouter cache NAT floating ip %s"),
+                 self._nat_floating_ip_rule_num)
+        LOG.info(_LI("Vyatta vRouter cache NAT subnet ip %s"),
+                 self._nat_subnet_ip_rule_num)
+        LOG.info(_LI("Vyatta vRouter cache NAT exclude rule num %s"),
+                 self._nat_exclude_rule_num)
+
+    def _parse_system_gateway(self, config_commands):
+
 
         system_gw_ip = None
-        ma = re.compile(".+static.+route.+next-hop ([^ \n]+).+", re.DOTALL)
-        result = ma.match(search_str)
-        if result is not None:
-            system_gw_ip = result.group(1)
+        result = re.findall("set protocols static route .+next-hop ([^ \n]+).", config_commands,re.MULTILINE)
+        if result:
+            system_gw_ip = result[0][1:]
         return system_gw_ip
 
-    def _process_interfaces(self, search_str, system_gw_ip):
+    def _process_interfaces(self, config_commands, system_gw_ip):
 
+        self._router_if_subnet_dict.clear()
         if self._vrouter_model == self._VROUTER_VSE_MODEL:
-            ma = re.compile(
-                ".+ethernet (eth\d+).+address ([^ \n]+).+description ([^ \n]+)"
-                ".+", re.DOTALL)
+            interfaces_description = re.findall("set interfaces ethernet (eth\d+).+description ([^ \n]+).", config_commands,re.MULTILINE)
         else:
-            ma = re.compile(
-                ".+dataplane (dp\d+s\d+).+address ([^ \n]+).+description"
-                " ([^ \n]+).+", re.DOTALL)
-
-        for paragraph in search_str.split('}'):
-            result = ma.match(paragraph)
-            if result is not None:
-                eth_if_id = result.group(1)
-                ip_address = result.group(2)
-                description = result.group(3)
-                if description == self._EXTERNAL_GATEWAY_DESCR:
+            interfaces_info = re.findall("set interfaces dataplane (dp\d+s\d+).+address ([^ \n]+).", config_commands,re.MULTILINE)
+        is_gateway_set = False
+        for int_info in interfaces_info:
+            if "dhcp" not in int_info[1]:
+                interface_number = int_info[0]
+                int_description = re.findall("set interfaces dataplane "+interface_number+" description ([^ \n]+).", config_commands,re.MULTILINE)[0][1:]
+                eth_if_id = interface_number
+                ip_address = int_info[1][1:]
+                if int_description == self._EXTERNAL_GATEWAY_DESCR and not is_gateway_set:
                     ext_gw_info = InterfaceInfo(eth_if_id,
                                                 ip_address, system_gw_ip)
                     self._external_gw_info = ext_gw_info
-                elif description == self._ROUTER_INTERFACE_DESCR:
-                    # Cache the router interface info using subnet
+                    is_gateway_set = True
+                elif int_description == self._ROUTER_INTERFACE_DESCR:
                     router_if_subnet = self._get_subnet_from_ip_address(
-                        ip_address)
+                                                              ip_address)
                     self._router_if_subnet_dict[router_if_subnet] = None
 
-    def _process_source_nat_rules(self, search_str):
+    def _process_source_nat_rules(self, config_commands):
 
-        for paragraph in search_str.split('rule'):
-            ma = re.compile(
-                ".(\d+).+outbound-interface.+source.+address ([^ \n]+)"
-                ".+translation.+address ([^ \n]+).+", re.DOTALL)
-            result = ma.match(paragraph)
-            if result is not None:
-                rule_num = int(result.group(1))
-                src_addr = result.group(2)
-                translation_addr = result.group(3)
-                if (self._MAX_NAT_EXCLUDE_RULE_NUM < rule_num <
-                   self._MAX_NAT_SUBNET_IP_RULE_NUM and
-                   src_addr in self._router_if_subnet_dict):
-                    # Cache the SNAT rule for router interface
-                    self._router_if_subnet_dict[src_addr] = rule_num
-                    self._nat_subnet_ip_rule_num = rule_num
-                elif (self._MAX_NAT_FLOATING_IP_RULE_NUM < rule_num <
-                    self._MAX_NAT_EXCLUDE_RULE_NUM and
-                    src_addr in self._router_if_subnet_dict):
+	self._floating_ip_dict.clear()
+        nat_rules = re.findall("set service nat source rule (\d+) translation address ([^ \n]+).+", config_commands,re.MULTILINE)
+        for nat_rule in nat_rules:
+             translation_addr = nat_rule[1][1:]
+             rule_num = nat_rule[0]
+             src_addr = re.findall("set service nat source rule "+rule_num+" source address ([^ \n]+).+", config_commands,re.MULTILINE)[0][1:]
+             rule_num = int(rule_num)
+             if (self._MAX_NAT_EXCLUDE_RULE_NUM < rule_num <
+                       self._MAX_NAT_SUBNET_IP_RULE_NUM and
+                       src_addr in self._router_if_subnet_dict):
+                 # Cache the SNAT rule for router interface
+                 self._router_if_subnet_dict[src_addr] = rule_num
+                 self._nat_subnet_ip_rule_num = rule_num
+             elif (self._MAX_NAT_FLOATING_IP_RULE_NUM < rule_num <
+                       self._MAX_NAT_EXCLUDE_RULE_NUM and
+                       src_addr in self._router_if_subnet_dict):
                     # TODO(sridhar): Add parsing code for exclude nat rule
-                    pass
-                elif rule_num < self._MAX_NAT_FLOATING_IP_RULE_NUM:
-                    self._nat_floating_ip_rule_num = rule_num
-                    floating_ip = translation_addr
-                    fixed_ip = src_addr
+                 pass
+             elif rule_num < self._MAX_NAT_FLOATING_IP_RULE_NUM:
+                 self._nat_floating_ip_rule_num = rule_num
+                 floating_ip = translation_addr
+                 fixed_ip = src_addr
                     # Store SNAT and DNAT rule in cache
-                    dict_key = self._get_floating_ip_key(floating_ip, fixed_ip)
-                    self._floating_ip_dict[dict_key] = rule_num
+                 dict_key = self._get_floating_ip_key(floating_ip, fixed_ip)
+                 self._floating_ip_dict[dict_key] = rule_num
 
     def _get_config_block(self, input_str, search_str):
 
@@ -1144,6 +1184,11 @@ class UserCmd(object):
         url = (prefix, self.cmd_type, self.cmd)
         return '/'.join(url)
 
+    def get_cmd(self):
+        return '{0}'.format(self.cmd)
+
+    def get_cmd_type(self):
+        return '{0}'.format(self.cmd_type)
 
 class SetCmd(UserCmd):
 

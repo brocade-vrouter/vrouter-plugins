@@ -15,6 +15,8 @@
 
 from oslo_config import cfg
 
+VROUTER_VSE_MODEL = 54
+VROUTER_VR_MODEL  = 56
 
 cfg.CONF.register_opts([
     cfg.StrOpt('tenant_admin_name', help=_('Name of tenant admin user.')),

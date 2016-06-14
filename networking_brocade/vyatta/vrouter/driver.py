@@ -276,6 +276,7 @@ class VyattaVRouterDriver(object):
         LOG.debug("Vyatta vRouter Driver::Get router driver")
 
         try:
+            self._vrouter_instance_map[router_id].get_vrouter_api_details()
             return self._vrouter_instance_map[router_id]
         except KeyError:
 
