@@ -149,13 +149,14 @@ class VRouterRestAPIClient(object):
         Ethernet interface identifier is derived from the given mac-address.
         """
 
-        (if_ip_address,
+        (mac_address, if_ip_address,
          eth_if_id) = self._get_ethernet_if_info(interface_info)
 
         cmd_list = []
         self._set_ethernet_if_cmd(cmd_list,
                                   eth_if_id,
                                   if_ip_address,
+                                  mac_address,
                                   self._ROUTER_INTERFACE_DESCR)
 
         ip_network = netaddr.IPNetwork(if_ip_address)
@@ -183,13 +184,14 @@ class VRouterRestAPIClient(object):
         Ethernet interface identifier is derived from the given mac-address.
         """
 
-        (if_ip_address,
+        (mac_address, if_ip_address,
          eth_if_id) = self._get_ethernet_if_info(interface_info)
 
         cmd_list = []
         self._delete_ethernet_if_cmd(cmd_list,
                                      eth_if_id,
                                      if_ip_address,
+                                     mac_address,
                                      self._ROUTER_INTERFACE_DESCR)
 
         # Check the cache for router interface
@@ -352,14 +354,15 @@ class VRouterRestAPIClient(object):
         gw_ip_address = interface_info[self.IF_IP_ADDRESS]
         gw_if_id = self.get_ethernet_if_id(gw_mac_address)
 
-        return gw_ip_address, gw_if_id
+        return gw_mac_address, gw_ip_address, gw_if_id
 
     def _get_gw_interface_info(self, external_gateway_info):
-        (gw_ip_address,
+        (gw_mac_address, gw_ip_address,
          gw_if_id) = self._get_ethernet_if_info(external_gateway_info)
         gw_gateway_ip = external_gateway_info[self.IF_GATEWAY_IP]
 
-        given_gw_info = InterfaceInfo(gw_if_id, gw_ip_address, gw_gateway_ip)
+        given_gw_info = InterfaceInfo(gw_if_id, gw_ip_address, gw_mac_address, 
+                                                            gw_gateway_ip)
         return given_gw_info
 
     def _update_gw_config_on_change(self, given_gw_info, cmd_list):
@@ -422,6 +425,7 @@ class VRouterRestAPIClient(object):
         self._set_ethernet_if_cmd(cmd_list,
                                   gw_info.get_ethernet_if_id(),
                                   gw_info.get_ip_address(),
+                                  gw_info.get_mac_address(),
                                   self._EXTERNAL_GATEWAY_DESCR)
 
         self._set_system_gateway_cmd(cmd_list, gw_info.get_gateway_ip())
@@ -444,6 +448,7 @@ class VRouterRestAPIClient(object):
         Adds SNAT rules and updates the cache.
         """
 
+        mac_address = gw_info.get_mac_address()
         # Remove default gateway
         self._delete_system_gateway_cmd(cmd_list,
                                         gw_info.get_gateway_ip())
@@ -452,6 +457,7 @@ class VRouterRestAPIClient(object):
         self._delete_ethernet_if_cmd(cmd_list,
                                      gw_info.get_ethernet_if_id(),
                                      gw_info.get_ip_address(),
+                                     mac_address,
                                      self._EXTERNAL_GATEWAY_DESCR)
 
         # Remove NAT rules for the existing router interfaces
@@ -734,7 +740,7 @@ class VRouterRestAPIClient(object):
                                        urllib.quote_plus(ip_address))))
 
     def _set_ethernet_if_cmd(self, cmd_list, if_id,
-                             ip_address, descr):
+                             ip_address, mac_address, descr):
         """Sets ip address and description of an ethernet interface."""
 
         if_cmd = self._get_interface_cmd()
@@ -746,6 +752,9 @@ class VRouterRestAPIClient(object):
         cmd_list.append(SetCmd("interfaces/{0}/{1}/description/{2}"
                                .format(if_cmd, if_id,
                                        urllib.quote_plus(descr))))
+        cmd_list.append(SetCmd("interfaces/{0}/{1}/hardware/mac/{2}"
+                               .format(if_cmd, if_id,
+                                       urllib.quote_plus(mac_address))))
 
     def _delete_ethernet_ip_cmd(self, cmd_list, if_id, ip_address):
         """Deletes ip address from an ethernet interface."""
@@ -757,7 +766,7 @@ class VRouterRestAPIClient(object):
                                           urllib.quote_plus(ip_address))))
 
     def _delete_ethernet_if_cmd(self, cmd_list, if_id,
-                                ip_address, descr):
+                                ip_address, mac_address, descr):
         """Deletes ip address and description of an ethernet interface."""
 
         if_cmd = self._get_interface_cmd()
@@ -769,6 +778,9 @@ class VRouterRestAPIClient(object):
         cmd_list.append(DeleteCmd("interfaces/{0}/{1}/description/{2}"
                                   .format(if_cmd, if_id,
                                           urllib.quote_plus(descr))))
+        cmd_list.append(DeleteCmd("interfaces/{0}/{1}/hardware/mac/{2}"
+                                  .format(if_cmd, if_id,
+                                          urllib.quote_plus(mac_address))))
         cmd_list.append(DeleteCmd("interfaces/{0}/{1}".
                                   format(if_cmd, if_id)))
 
@@ -1205,18 +1217,22 @@ class DeleteCmd(UserCmd):
 class InterfaceInfo(object):
 
     """Class for storing interface related info."""
-    def __init__(self, ethernet_if_id, ip_address,
+    def __init__(self, ethernet_if_id, ip_address, mac_address,
                  gateway_ip=None):
         self._ethernet_if_id = ethernet_if_id
         self._ip_address = ip_address
         self._gateway_ip = gateway_ip
         self._ip_addr_without_cidr = None
+        self._mac_address = mac_address
 
     def get_ethernet_if_id(self):
         return self._ethernet_if_id
 
     def get_ip_address(self):
         return self._ip_address
+
+    def get_mac_address(self):
+        return self._mac_address
 
     def get_ip_addr_without_cidr(self):
         if self._ip_addr_without_cidr is None:
